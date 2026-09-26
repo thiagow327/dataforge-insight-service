@@ -1,11 +1,15 @@
 from fastapi import FastAPI
 
+from app.routers import analysis
+
 app = FastAPI(
     title="DataForge Insight Service",
     description="API secundária: validação, estatística, detecção de anomalias, "
     "enriquecimento via BrasilAPI e interpretação por IA (Ollama).",
     version="0.1.0",
 )
+
+app.include_router(analysis.router)
 
 
 @app.get("/health", tags=["infra"])
