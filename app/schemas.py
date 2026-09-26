@@ -30,6 +30,7 @@ class QualityReport(BaseModel):
     ausentes: dict[str, int]
     invalidos: dict[str, int]
     duplicatas: int
+    linhas_limpas: int
 
 
 class ValorStats(BaseModel):
@@ -59,3 +60,5 @@ class AnalysisResponse(BaseModel):
     statistics: Statistics
     anomalies: list[Anomaly]
     enrichment: list[EnrichedCep] = Field(default_factory=list)
+    data_quality_score: float
+    summary: str | None = None

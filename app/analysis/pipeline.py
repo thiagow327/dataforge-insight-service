@@ -87,6 +87,7 @@ def analyze(
     # ---------- 3. Enriquecimento (BrasilAPI, opcional) ----------
     enrichment: list[dict] = []
     por_regiao: dict[str, int] = {}
+    enriquecidos: dict[str, dict] = {}
     if enricher is not None:
         ceps_unicos = df["cep"].dropna().astype(str).unique().tolist()
         enriquecidos = {cep: enricher(cep) for cep in ceps_unicos}
@@ -121,12 +122,30 @@ def analyze(
         str(k): int(v) for k, v in df["produto"].dropna().value_counts().items()
     }
 
+    # ---------- Score de qualidade: proporção de linhas totalmente limpas ----------
+    def _cep_ruim(cep: Any) -> bool:
+        if pd.isna(cep):
+            return True
+        s = str(cep)
+        if not CEP_RE.match(s):
+            return True
+        info = enriquecidos.get(s)
+        return bool(info and info.get("valido") is False)
+
+    problema = df[["data", "produto", "cep", "valor"]].isna().any(axis=1)
+    problema |= df["valor"] < 0
+    problema |= df.duplicated()
+    problema |= df["cep"].apply(_cep_ruim)
+    linhas_limpas = int((~problema).sum())
+    score = round(linhas_limpas / total, 2) if total else 0.0
+
     return {
         "quality": {
             "total": total,
             "ausentes": ausentes,
             "invalidos": invalidos,
             "duplicatas": duplicatas,
+            "linhas_limpas": linhas_limpas,
         },
         "statistics": {
             "valor": valor_stats,
@@ -135,4 +154,5 @@ def analyze(
         },
         "anomalies": anomalies,
         "enrichment": enrichment,
+        "data_quality_score": score,
     }
