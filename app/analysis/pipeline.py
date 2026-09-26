@@ -10,7 +10,7 @@ O enriquecimento (BrasilAPI) e a interpretação por IA entram nas próximas fas
 
 import math
 import re
-from typing import Any
+from typing import Any, Callable
 
 import pandas as pd
 
@@ -31,7 +31,10 @@ def _num(x: Any) -> float | None:
     return round(f, 2)
 
 
-def analyze(records: list[dict[str, Any]]) -> dict:
+def analyze(
+    records: list[dict[str, Any]],
+    enricher: Callable[[str], dict] | None = None,
+) -> dict:
     total = len(records)
     df = pd.DataFrame(records, columns=["data", "produto", "cep", "valor"])
     df["valor"] = pd.to_numeric(df["valor"], errors="coerce")
@@ -81,6 +84,29 @@ def analyze(records: list[dict[str, Any]]) -> dict:
                     }
                 )
 
+    # ---------- 3. Enriquecimento (BrasilAPI, opcional) ----------
+    enrichment: list[dict] = []
+    por_regiao: dict[str, int] = {}
+    if enricher is not None:
+        ceps_unicos = df["cep"].dropna().astype(str).unique().tolist()
+        enriquecidos = {cep: enricher(cep) for cep in ceps_unicos}
+        enrichment = list(enriquecidos.values())
+
+        # CEPs bem-formados mas inexistentes contam como inválidos também
+        inexistentes = sum(
+            1
+            for cep, info in enriquecidos.items()
+            if CEP_RE.match(cep) and info.get("valido") is False
+        )
+        if inexistentes:
+            invalidos["cep"] = invalidos.get("cep", 0) + inexistentes
+
+        # Contagem de registros por região (via CEP enriquecido)
+        for cep in df["cep"].dropna().astype(str):
+            regiao = enriquecidos.get(cep, {}).get("regiao")
+            if regiao:
+                por_regiao[regiao] = por_regiao.get(regiao, 0) + 1
+
     # ---------- 4. Estatística ----------
     valores = df["valor"].dropna()
     valor_stats = {
@@ -102,6 +128,11 @@ def analyze(records: list[dict[str, Any]]) -> dict:
             "invalidos": invalidos,
             "duplicatas": duplicatas,
         },
-        "statistics": {"valor": valor_stats, "por_produto": por_produto},
+        "statistics": {
+            "valor": valor_stats,
+            "por_produto": por_produto,
+            "por_regiao": por_regiao,
+        },
         "anomalies": anomalies,
+        "enrichment": enrichment,
     }

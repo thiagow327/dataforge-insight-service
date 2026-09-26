@@ -3,6 +3,14 @@ from datetime import date
 from pydantic import BaseModel, Field
 
 
+class EnrichedCep(BaseModel):
+    cep: str | None = None
+    cidade: str | None = None
+    estado: str | None = None
+    regiao: str | None = None
+    valido: bool | None = None
+
+
 # ---------- Entrada ----------
 class RecordIn(BaseModel):
     data: date | None = None
@@ -36,6 +44,7 @@ class ValorStats(BaseModel):
 class Statistics(BaseModel):
     valor: ValorStats
     por_produto: dict[str, int]
+    por_regiao: dict[str, int] = Field(default_factory=dict)
 
 
 class Anomaly(BaseModel):
@@ -49,3 +58,4 @@ class AnalysisResponse(BaseModel):
     quality: QualityReport
     statistics: Statistics
     anomalies: list[Anomaly]
+    enrichment: list[EnrichedCep] = Field(default_factory=list)

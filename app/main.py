@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from app.routers import analysis
+from app.routers import analysis, enrichment
 
 app = FastAPI(
     title="DataForge Insight Service",
@@ -10,6 +10,7 @@ app = FastAPI(
 )
 
 app.include_router(analysis.router)
+app.include_router(enrichment.router)
 
 
 @app.get("/health", tags=["infra"])

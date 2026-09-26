@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, status
 
 from app import schemas
 from app.analysis.pipeline import analyze
+from app.enrichment import enrich_cep
 from app.store import LATEST
 
 router = APIRouter(tags=["analysis"])
@@ -9,9 +10,9 @@ router = APIRouter(tags=["analysis"])
 
 @router.post("/analysis", response_model=schemas.AnalysisResponse)
 def run_analysis(req: schemas.AnalysisRequest):
-    """Executa o pipeline de análise sobre os registros recebidos."""
+    """Executa o pipeline de análise (com enriquecimento via BrasilAPI)."""
     records = [r.model_dump() for r in req.records]
-    result = analyze(records)
+    result = analyze(records, enricher=enrich_cep)
     result["dataset_id"] = req.dataset_id
     LATEST[req.dataset_id] = result
     return result
